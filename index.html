@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Ride - Sri Lanka</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .app-title {
+            color: #333;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .app-subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .location-section {
+            margin-bottom: 25px;
+        }
+
+        .location-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        .location-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .location-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .mic-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .mic-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+
+        .mic-button.listening {
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .go-button {
+            flex: 1;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .go-button:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .go-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-message {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .location-suggestions {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            width: calc(100% - 60px);
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .suggestion-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            transition: background-color 0.2s ease;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .voice-hint {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #1565c0;
+            text-align: center;
+        }
+
+        .listening-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: #dc3545;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="app-header">
+            <h1 class="app-title">Quick Ride</h1>
+        </div>
+
+        <div class="location-section">
+            <label class="location-label" for="pickup">🔵 Pickup Location</label>
+            <div style="position: relative;">
+                <input type="text" id="pickup" class="location-input" placeholder="Enter pickup address...">
+                <div id="pickup-suggestions" class="location-suggestions" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="location-section">
+            <label class="location-label" for="dropoff">🟢 Drop-off Location</label>
+            <div style="position: relative;">
+                <input type="text" id="dropoff" class="location-input" placeholder="Enter drop-off address...">
+                <div id="dropoff-suggestions" class="location-suggestions" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="voice-hint">
+            💡 Say: "From Colombo to Kandy" or "Pickup Negombo drop Galle"
+        </div>
+
+        <div class="button-container">
+            <button id="mic-button" class="mic-button" title="Voice Input">
+                🎤
+                <div id="listening-indicator" class="listening-indicator" style="display: none;"></div>
+            </button>
+            <button id="go-button" class="go-button" disabled>Enter Locations</button>
+        </div>
+
+        <div id="status" class="status-message" style="display: none;"></div>
+    </div>
+
+    <script>
+        class DeliveryApp {
+            constructor() {
+                this.pickupInput = document.getElementById('pickup');
+                this.dropoffInput = document.getElementById('dropoff');
+                this.micButton = document.getElementById('mic-button');
+                this.goButton = document.getElementById('go-button');
+                this.statusDiv = document.getElementById('status');
+                this.listeningIndicator = document.getElementById('listening-indicator');
+                
+                this.isListening = false;
+                this.recognition = null;
+
+                // Comprehensive Sri Lankan locations
+                this.sriLankanLocations = [
+                    // Major Cities
+                    'Colombo', 'Negombo', 'Kandy', 'Galle', 'Matara', 'Hambantota', 'Jaffna', 'Anuradhapura',
+                    'Polonnaruwa', 'Trincomalee', 'Batticaloa', 'Ampara', 'Badulla', 'Bandarawela', 'Ella',
+                    'Nuwara Eliya', 'Hatton', 'Dambulla', 'Sigiriya', 'Hikkaduwa', 'Unawatuna', 'Mirissa',
+                    
+                    // Colombo Area
+                    'Fort', 'Pettah', 'Colombo 1', 'Colombo 2', 'Colombo 3', 'Colombo 4', 'Colombo 5', 'Colombo 6', 'Colombo 7',
+                    'Kollupitiya', 'Bambalapitiya', 'Wellawatte', 'Dehiwala', 'Mount Lavinia', 'Ratmalana', 'Moratuwa',
+                    'Piliyandala', 'Maharagama', 'Kottawa', 'Nugegoda', 'Mirihana', 'Thalawathugoda', 'Battaramulla',
+                    'Rajagiriya', 'Narahenpita', 'Borella', 'Maradana', 'Dematagoda', 'Kiribathgoda', 'Kelaniya',
+                    'Wattala', 'Hendala', 'Ja-Ela', 'Ekala', 'Liyanagemulla', 'Seeduwa', 'Katunayake',
+                    
+                    // Western Province
+                    'Gampaha', 'Veyangoda', 'Mirigama', 'Minuwangoda', 'Nittambuwa', 'Divulapitiya', 'Chilaw',
+                    'Kalutara', 'Panadura', 'Horana', 'Mathugama', 'Aluthgama', 'Bentota', 'Beruwala',
+                    'Wadduwa', 'Payagala', 'Maggona', 'Ingiriya', 'Bulathsinhala', 'Palindanuwara',
+                    
+                    // Southern Province  
+                    'Weligama', 'Tangalle', 'Matara', 'Akuressa', 'Deniyaya', 'Kamburupitiya', 'Hakmana',
+                    'Beliatta', 'Walasmulla', 'Tissamaharama', 'Kataragama', 'Hambantota', 'Ambalantota',
+                    
+                    // Central Province
+                    'Matale', 'Galewela', 'Ukuwela', 'Dambulla', 'Naula', 'Pallepola', 'Rattota',
+                    'Gampola', 'Peradeniya', 'Katugastota', 'Kundasale', 'Digana', 'Teldeniya',
+                    
+                    // Roads and Areas
+                    'Sethsiri Road', 'Galle Road', 'High Level Road', 'Baseline Road', 'Kotte Road',
+                    'Parliament Road', 'Union Place', 'Duplication Road', 'Havelock Road', 'Ward Place',
+                    'Gregory Road', 'Barnes Place', 'Flower Road', 'Horton Place', 'York Street',
+                    'Main Street', 'New Kandy Road', 'Old Kesbewa Road', 'Ratmalana Road', 'Moratuwa Road',
+                    
+                    // Markets and Landmarks
+                    'Majestic City', 'Liberty Plaza', 'Crescat Boulevard', 'One Galle Face', 'Odel',
+                    'Food City', 'Cargills', 'Keells Super', 'Arpico', 'Laugfs', 'Softlogic',
+                    'Pettah Market', 'Manning Market', 'Good Market', 'Borupana Market',
+                    'Kaduwela Market', 'Maharagama Market', 'Nugegoda Market', 'Moratuwa Market',
+                    
+                    // Farms and Specific Places
+                    'Macart Farm', 'Green Farm', 'Dairy Farm', 'Poultry Farm', 'Vegetable Farm',
+                    'Coconut Farm', 'Tea Estate', 'Rubber Estate', 'Spice Garden', 'Herb Garden'
+                ];
+
+                this.initializeApp();
+            }
+
+            initializeApp() {
+                this.setupSpeechRecognition();
+                this.attachEventListeners();
+                this.showStatus('Ready! Say "From [pickup] to [destination]" or type locations.', 'success');
+            }
+
+            setupSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.interimResults = false;
+                    this.recognition.lang = 'en-US';
+                    this.recognition.maxAlternatives = 3;
+
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                        this.micButton.classList.add('listening');
+                        this.listeningIndicator.style.display = 'block';
+                        this.showStatus('🎤 Listening... Say your journey (e.g., "From Colombo to Kandy")', 'success');
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        console.log('Voice input:', transcript);
+                        this.processVoiceInput(transcript);
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        if (event.error === 'no-speech') {
+                            this.showStatus('No speech detected. Please try again and speak clearly.', 'error');
+                        } else if (event.error === 'not-allowed') {
+                            this.showStatus('Microphone access denied. Please allow microphone permission.', 'error');
+                        } else if (event.error === 'network') {
+                            this.showStatus('Network error. Please check your connection.', 'error');
+                        } else {
+                            this.showStatus('Voice recognition error. Please try again or type your locations.', 'error');
+                        }
+                        this.stopListening();
+                    };
+
+                    this.recognition.onend = () => {
+                        this.stopListening();
+                    };
+                } else {
+                    this.showStatus('Voice recognition not supported in this browser. Please type your locations.', 'error');
+                }
+            }
+
+            attachEventListeners() {
+                this.micButton.addEventListener('click', () => this.toggleVoiceInput());
+                this.goButton.addEventListener('click', () => this.openUberWithLocations());
+
+                this.pickupInput.addEventListener('input', (e) => this.handleLocationInput(e, 'pickup'));
+                this.dropoffInput.addEventListener('input', (e) => this.handleLocationInput(e, 'dropoff'));
+
+                [this.pickupInput, this.dropoffInput].forEach(input => {
+                    input.addEventListener('input', () => this.updateGoButtonState());
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.location-input')) {
+                        document.querySelectorAll('.location-suggestions').forEach(div => {
+                            div.style.display = 'none';
+                        });
+                    }
+                });
+            }
+
+            handleLocationInput(event, type) {
+                const value = event.target.value;
+                if (value.length > 2) {
+                    this.showLocationSuggestions(value, type);
+                } else {
+                    this.hideLocationSuggestions(type);
+                }
+            }
+
+            showLocationSuggestions(query, type) {
+                const suggestions = this.sriLankanLocations.filter(location => 
+                    location.toLowerCase().includes(query.toLowerCase())
+                ).slice(0, 5);
+
+                const suggestionsDiv = document.getElementById(`${type}-suggestions`);
+                
+                if (suggestions.length > 0) {
+                    suggestionsDiv.innerHTML = suggestions.map(location => 
+                        `<div class="suggestion-item" onclick="app.selectLocation('${location}', '${type}')">${location}</div>`
+                    ).join('');
+                    suggestionsDiv.style.display = 'block';
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            }
+
+            hideLocationSuggestions(type) {
+                document.getElementById(`${type}-suggestions`).style.display = 'none';
+            }
+
+            selectLocation(location, type) {
+                document.getElementById(type).value = location;
+                this.hideLocationSuggestions(type);
+                this.updateGoButtonState();
+            }
+
+            toggleVoiceInput() {
+                if (!this.recognition) {
+                    this.showStatus('Voice recognition not available in this browser', 'error');
+                    return;
+                }
+
+                if (this.isListening) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                }
+            }
+
+            stopListening() {
+                this.isListening = false;
+                this.micButton.classList.remove('listening');
+                this.listeningIndicator.style.display = 'none';
+            }
+
+            processVoiceInput(transcript) {
+                const cleanTranscript = transcript.toLowerCase().trim();
+                console.log('Processing:', cleanTranscript);
+                
+                // Enhanced parsing patterns for "from X to Y" format
+                const patterns = [
+                    // "from X to Y" patterns
+                    /(?:from\s+)(.+?)(?:\s+to\s+)(.+)/i,
+                    /(?:pickup\s+(?:from\s+)?)(.+?)(?:\s+(?:drop\s*(?:off)?\s*(?:to\s+)?))(.+)/i,
+                    /(?:go\s+from\s+)(.+?)(?:\s+to\s+)(.+)/i,
+                    /(?:travel\s+from\s+)(.+?)(?:\s+to\s+)(.+)/i,
+                    // Alternative patterns
+                    /(.+?)(?:\s+to\s+)(.+)/i,
+                ];
+
+                let pickup = null;
+                let dropoff = null;
+
+                // Try each pattern
+                for (let pattern of patterns) {
+                    const match = cleanTranscript.match(pattern);
+                    if (match) {
+                        const potential_pickup = match[1].trim();
+                        const potential_dropoff = match[2].trim();
+                        
+                        console.log('Pattern matched:', potential_pickup, '->', potential_dropoff);
+                        
+                        pickup = this.findBestLocationMatch(potential_pickup);
+                        dropoff = this.findBestLocationMatch(potential_dropoff);
+                        
+                        if (pickup && dropoff) {
+                            console.log('Both locations found:', pickup, dropoff);
+                            break;
+                        }
+                    }
+                }
+
+                // Set the locations if found
+                if (pickup && dropoff) {
+                    this.pickupInput.value = pickup;
+                    this.dropoffInput.value = dropoff;
+                    this.updateGoButtonState();
+                    this.showStatus(`✅ Journey set: ${pickup} → ${dropoff}`, 'success');
+                } else if (pickup || dropoff) {
+                    // If only one location found, try to fill the appropriate field
+                    const foundLocation = pickup || dropoff;
+                    if (!this.pickupInput.value) {
+                        this.pickupInput.value = foundLocation;
+                        this.showStatus(`Pickup set: ${foundLocation}. Please specify drop-off location.`, 'success');
+                    } else if (!this.dropoffInput.value) {
+                        this.dropoffInput.value = foundLocation;
+                        this.showStatus(`Drop-off set: ${foundLocation}. Ready to go!`, 'success');
+                    }
+                    this.updateGoButtonState();
+                } else {
+                    this.showStatus(`❌ Could not identify locations in: "${transcript}". Try saying "From [pickup] to [destination]"`, 'error');
+                }
+            }
+
+            findBestLocationMatch(input) {
+                if (!input) return null;
+                
+                const normalizedInput = input.replace(/[^\w\s]/g, '').toLowerCase().trim();
+                console.log('Finding match for:', normalizedInput);
+                
+                // Handle numbered addresses with specific areas (like "112 sethsiri road moratuwa")
+                const addressWithAreaMatch = normalizedInput.match(/(\d+\s+)?(.+?)\s+(moratuwa|colombo|kandy|galle|negombo|dehiwala|mount\s+lavinia|bambalapitiya|wellawatte|fort|pettah|nugegoda|maharagama|kottawa|ratmalana|piliyandala|battaramulla|rajagiriya|kelaniya|wattala|ja-ela|katunayake|gampaha|kalutara|panadura|horana|matara|hambantota|anuradhapura|polonnaruwa|trincomalee|batticaloa|jaffna|nuwara\s+eliya|hatton|dambulla|ella|badulla|bandarawela|sigiriya)/i);
+                
+                if (addressWithAreaMatch) {
+                    const number = addressWithAreaMatch[1] ? addressWithAreaMatch[1].trim() : '';
+                    const streetName = addressWithAreaMatch[2].trim();
+                    const area = addressWithAreaMatch[3].trim();
+                    
+                    // Format complete address
+                    const fullAddress = `${number}${number ? ' ' : ''}${this.formatAddress(streetName)} ${this.formatAddress(area)}`.trim();
+                    console.log('Formatted address:', fullAddress);
+                    return fullAddress;
+                }
+                
+                // Direct exact matches first
+                for (let location of this.sriLankanLocations) {
+                    if (location.toLowerCase() === normalizedInput) {
+                        return location;
+                    }
+                }
+
+                // Partial matches
+                for (let location of this.sriLankanLocations) {
+                    if (normalizedInput.includes(location.toLowerCase()) || 
+                        location.toLowerCase().includes(normalizedInput)) {
+                        return location;
+                    }
+                }
+
+                // Enhanced fuzzy matching for common variations
+                const variations = {
+                    'moratuwa': ['moratuwa', 'moratu', 'moratua', 'morathuwa', 'moratuva'],
+                    'colombo': ['colombo', 'colmbo', 'kolombo', 'colombo city'],
+                    'kandy': ['kandy', 'kandi', 'candy', 'kandy city'],
+                    'galle': ['galle', 'gal', 'gall', 'galle fort'],
+                    'negombo': ['negombo', 'negambo', 'nigombo', 'negombo city'],
+                    'macart farm': ['macart', 'macarthy', 'makart', 'macart farm', 'mccart', 'macart', 'farm'],
+                    'sethsiri road': ['sethsiri', 'seth siri', 'sethsri', 'sethsiri road', 'set siri', 'sethsiree'],
+                    'fort': ['fort', 'colombo fort', 'fort area'],
+                    'mount lavinia': ['mount lavinia', 'mount', 'lavinia', 'ml'],
+                    'dehiwala': ['dehiwala', 'dehiwela', 'dehiwala zoo'],
+                    'bambalapitiya': ['bambalapitiya', 'bambala', 'bambalapitya'],
+                    'wellawatte': ['wellawatte', 'wellawatta', 'wellawatte beach']
+                };
+
+                for (let [standard, variants] of Object.entries(variations)) {
+                    if (variants.some(variant => normalizedInput.includes(variant) || variant.includes(normalizedInput))) {
+                        // Find the actual location name
+                        const actualLocation = this.sriLankanLocations.find(loc => 
+                            loc.toLowerCase().includes(standard) || standard.includes(loc.toLowerCase())
+                        );
+                        return actualLocation || this.formatAddress(standard);
+                    }
+                }
+
+                // If contains road/street keywords with address-like structure
+                if (normalizedInput.includes('road') || normalizedInput.includes('street') || 
+                    normalizedInput.includes('lane') || /\d/.test(normalizedInput)) {
+                    return this.formatAddress(normalizedInput);
+                }
+
+                return null;
+            }
+
+            formatAddress(address) {
+                return address.split(' ').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                ).join(' ');
+            }
+
+            updateGoButtonState() {
+                const hasPickup = this.pickupInput.value.trim() !== '';
+                const hasDropoff = this.dropoffInput.value.trim() !== '';
+                
+                this.goButton.disabled = !(hasPickup && hasDropoff);
+                
+                if (hasPickup && hasDropoff) {
+                    this.goButton.textContent = 'Open Uber 🚗';
+                } else {
+                    this.goButton.textContent = 'Enter Both Locations';
+                }
+            }
+
+            openUberWithLocations() {
+                const pickup = this.pickupInput.value.trim();
+                const dropoff = this.dropoffInput.value.trim();
+
+                if (!pickup || !dropoff) {
+                    this.showStatus('Please enter both pickup and drop-off locations', 'error');
+                    return;
+                }
+
+                this.showStatus(`🚗 Opening Uber with: ${pickup} → ${dropoff}`, 'success');
+
+                // Enhanced Uber integration with multiple fallbacks
+                const encodedPickup = encodeURIComponent(pickup);
+                const encodedDropoff = encodeURIComponent(dropoff);
+
+                // Try multiple Uber URL formats for better compatibility
+                const uberUrls = [
+                    // Modern Uber deep link
+                    `uber://?client_id=&action=setPickup&pickup[formatted_address]=${encodedPickup}&dropoff[formatted_address]=${encodedDropoff}`,
+                    // Alternative deep link format
+                    `uber://?action=setPickup&pickup=${encodedPickup}&destination=${encodedDropoff}`,
+                    // Web fallback with improved parameters
+                    `https://m.uber.com/ul/?action=setPickup&pickup[formatted_address]=${encodedPickup}&dropoff[formatted_address]=${encodedDropoff}`,
+                    // Desktop web fallback
+                    `https://uber.com/go/?pickup=${encodedPickup}&dropoff=${encodedDropoff}`
+                ];
+
+                // Try to open the app first, then fallback to web
+                let urlIndex = 0;
+                const tryNextUrl = () => {
+                    if (urlIndex < uberUrls.length) {
+                        const url = uberUrls[urlIndex];
+                        console.log('Trying URL:', url);
+                        
+                        if (urlIndex < 2) {
+                            // Try app URLs
+                            window.location.href = url;
+                            setTimeout(() => {
+                                urlIndex++;
+                                tryNextUrl();
+                            }, 1500);
+                        } else {
+                            // Open web URLs
+                            const newWindow = window.open(url, '_blank');
+                            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                urlIndex++;
+                                if (urlIndex < uberUrls.length) {
+                                    setTimeout(tryNextUrl, 1000);
+                                } else {
+                                    this.showStatus('Unable to open Uber. Please install the Uber app or visit uber.com manually.', 'error');
+                                }
+                            } else {
+                                this.showStatus('✅ Uber opened successfully! Complete your booking there.', 'success');
+                            }
+                        }
+                    }
+                };
+
+                tryNextUrl();
+
+                // Also provide a manual backup
+                setTimeout(() => {
+                    if (confirm('If Uber didn\'t open automatically, would you like to copy the locations to clipboard?')) {
+                        const textToCopy = `Pickup: ${pickup}\nDrop-off: ${dropoff}`;
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                this.showStatus('📋 Locations copied to clipboard!', 'success');
+                            });
+                        } else {
+                            // Fallback for older browsers
+                            const textArea = document.createElement('textarea');
+                            textArea.value = textToCopy;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            try {
+                                document.execCommand('copy');
+                                this.showStatus('📋 Locations copied to clipboard!', 'success');
+                            } catch (err) {
+                                console.error('Copy failed:', err);
+                            }
+                            document.body.removeChild(textArea);
+                        }
+                    }
+                }, 3000);
+            }
+
+            showStatus(message, type = '') {
+                this.statusDiv.textContent = message;
+                this.statusDiv.className = `status-message ${type}`;
+                this.statusDiv.style.display = 'block';
+                
+                if (type === 'success' && !message.includes('Ready') && !message.includes('Listening')) {
+                    setTimeout(() => {
+                        if (this.statusDiv.textContent === message) {
+                            this.statusDiv.style.display = 'none';
+                        }
+                    }, 5000);
+                }
+            }
+        }
+
+        // Initialize the app
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new DeliveryApp();
+        });
+    </script>
+</body>
+</html>
